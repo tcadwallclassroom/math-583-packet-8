@@ -1,0 +1,178 @@
+---
+title: "Packet 8 - The Chi-squared statistic"
+knit: (function(input_file, encoding) {
+  out_dir <- 'docs';
+  rmarkdown::render(input_file,
+  encoding=encoding,
+  output_file=file.path(dirname(input_file), out_dir, 'index.html'))})
+author: "Todd CadwalladerOlsker"
+date: "*Last updated:* `r Sys.Date()`"
+output:
+  rmdformats::downcute:
+    downcute_theme: "chaos"
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+library(rmdformats)
+library(openintro)
+library(tidyverse)
+library(gghighlight)
+library(formatR)
+library(infer)
+knitr::opts_chunk$set(echo = T, 
+                      cache = T, 
+                      eval = T, 
+                      cache.lazy = F, 
+                      warning = F)
+knitr::opts_chunk$set(tidy.opts=list(width.cutoff=80),tidy=F)
+options(scipen = 999)
+```
+
+
+
+
+## The $\chi^2$ statistic
+
+Shifting our perspective a little bit: We are examining whether or not the variable of "hospitalization event" is *independent* of the variable of "treated with ivermectin". In the null hypothesis, these variables are, in fact, independent: the probability of having an event is the same for those treated with ivermectin as those treated with a placebo. 
+
+We can create *two way tables* from our tables above, in which we find both the sums of the rows and the sums of the columns. The magic of a two way table is that we can have more than just a 2-by-2 table; we can make tables of any size. 
+
+As an example, let's look at whether the population favors requiring a permit to carry a gun, broken down by race:
+
+```{r gunlaw race}
+library(gssr)
+num_vars <- c()
+cat_vars <- c("race", "gunlaw")
+my_vars <- c(num_vars, cat_vars)
+
+gss18 <- gss_get_yr(2018)
+data <- gss18
+data <- data %>% 
+  select(all_of(my_vars)) %>% 
+  mutate(
+    # Convert all missing to NA
+    across(everything(), haven::zap_missing),
+    # Make all categorical variables factors and relabel nicely
+    across(all_of(cat_vars), forcats::as_factor)
+  )
+
+table_data <- table(data$race, data$gunlaw)
+table_data %>% addmargins() 
+table_data %>% prop.table(1)
+table_m <- table_data %>% addmargins() 
+```
+
+We can see that white respondents are slightly less that 70% in support of gun permit laws, while black and other respondents are slightly more than 75% in favor. 
+
+Is this difference statistically significant? In order to answer that question, we first need a test statistic. 
+
+The agreed-upon statistic for a two-way table like this is the *chi-square* or $\chi^2$ statistic. It is defined as
+
+\[\chi^2 = \sum \frac{(O-E)^2}{E}\]
+
+where $O$ is the observed value of each cell, $E$ is the expected value of each cell, and the summation is over all cells of the table. The expected value, $E$, is given by the null hypothesis: normally, that there is no difference in the proportion of favoring gun permit laws among the groups. Under this null hypothesis, the expected value is the product of the row sum and the column sum, divided by the total sum:
+
+```{r calc chisq by hand}
+E_white_favor <- 
+  table_m["white", "Sum"]*table_m["Sum", "favor"]/table_m["Sum", "Sum"]
+E_black_favor <- 
+  table_m["black", "Sum"]*table_m["Sum", "favor"]/table_m["Sum", "Sum"]
+E_other_favor <- 
+  table_m["other", "Sum"]*table_m["Sum", "favor"]/table_m["Sum", "Sum"]
+E_white_oppose <- 
+  table_m["white", "Sum"]*table_m["Sum", "oppose"]/table_m["Sum", "Sum"]
+E_black_oppose <- 
+  table_m["black", "Sum"]*table_m["Sum", "oppose"]/table_m["Sum", "Sum"]
+E_other_oppose <- 
+  table_m["other", "Sum"]*table_m["Sum", "oppose"]/table_m["Sum", "Sum"]
+
+chi_sq <- 
+  (table_data["white", "favor"] - E_white_favor)^2 / E_white_favor +
+  (table_data["black", "favor"] - E_black_favor)^2 / E_black_favor +
+  (table_data["other", "favor"] - E_other_favor)^2 / E_other_favor +
+  (table_data["white", "oppose"] - E_white_oppose)^2 / E_white_oppose +
+  (table_data["black", "oppose"] - E_black_oppose)^2 / E_black_oppose +
+  (table_data["other", "oppose"] - E_other_oppose)^2 / E_other_oppose
+
+chi_sq
+```
+
+Obviously, calculating this by hand is a pain. The `infer` package can help:
+
+```{r chisq infer}
+observed_chisq <- data %>%
+  specify(gunlaw ~ race) %>%
+  calculate(stat = "Chisq")
+observed_chisq
+```
+
+What does this statistic tell us? Is `r chi_sq` high? Low?
+
+Using randomization techniques, we can find out what proportion of simulations have a more extreme (that is, larger) $\chi^2$ statistic than our observed data.
+
+```{r chisq infer rando}
+null_dist_chisq <- data %>%
+  specify(gunlaw ~ race) %>%
+  hypothesize(null = "independence") %>% 
+  generate(reps = 10000, type = "permute") %>% 
+  calculate(stat = "Chisq")
+  
+null_dist_chisq %>%
+  visualize(bins = 100) + 
+  shade_p_value(observed_chisq,
+                direction = "greater")
+
+null_dist_chisq %>% 
+  get_p_value(observed_chisq, direction = "greater")
+```
+
+The distribution you see in the graph is the $\chi^2$ distribution with 2 "degrees of freedom". We can graph the probability distribution function along with our data:
+
+```{r chisq viz}
+null_dist_chisq %>%
+  visualize(bins = 100, method = "both") + 
+  shade_p_value(observed_chisq,
+                direction = "greater")
+```
+
+Of course, R also has a built-in function `chisq.test()`:
+
+```{r chisq baseR}
+chisq.test(data$race, data$gunlaw)
+```
+
+The 2-by-2 tables we saw in the two-proportion tests above can also be tackled using the $\chi^2$ statistic instead. In this case, there is only 1 degree of freedom. 
+
+The number of degrees of freedom is 
+\[(\text{number of rows} - 1)(\text{number of columns} - 1)\] when there are at least two rows and two columns.
+
+The idea here is that if we know this many entries in the table, we can calculate the rest of them using the (known) values of the marginal sums. 
+
+## To Turn In
+
+Another use of the $\chi^2$ statistic is to perform what is called a *goodness-of-fit test*. Rather than determine if two variables are independent, this time we will investigate whether observed data fits a known distribution.
+
+For this part, we will use data gathered in June 2021, as the COVID-19 vaccines were first beginning to be widely distributed. In Florida, the state leadership was accused of prioritizing vaccine distribution for wealthier, predominately White counties.
+
+A CBS News article at <https://www.cbsnews.com/news/covid-vaccine-florida-wealthy-white-patients-poor-black/> examined the vaccination rate by county by percentage of White, non-Hispanic residents and by per capita income, and calculated a regression line.
+
+Let's examine the data a different way: the most recent vaccination data for Florida is available at <http://ww11.doh.state.fl.us/comm/_partners/covid19_report_archive/vaccine/vaccine_report_latest.pdf>. As of June 3, 2021, the site reported the following number of total vaccinations by race:
+
+|American Indian/Alaskan|Black|Other|Unknown|White|Total
+|---|---|---|---|---|---|
+|41462|753863|1191827|1583589|6826558|10397299|
+
+
+Note that Florida reports vaccination by ethnicity (Hispanic and Non-Hispanic) separately, and we aren't able to further break down the categories above by ethnicity.
+
+The demographics of Florida, according to the 2010 Census, are as follows: 
+
+|American Indian/Alaskan|Black|Other|White|Total
+|---|---|---|---|---|
+|0.5%|16.9%|5.3%|77.3%|100%|
+
+Using these demographics, we can calculate the expected number of vaccinations for each race, and compare them to the observed number of vaccinations. Using a randomization technique similar to the above, we can determine if the difference between expected and observed values is likely to be due to chance. 
+
+However, notice that some of vaccinations are "unknown". We often have missing information, and how we deal with missing data depends on how the data was collected. Since we are working with data that we have not collected ourselves, I'll simply exclude the "unknown" vaccinations from consideration.^[This is *listwise deletion*, which is a very simple method for dealing with missing data. There are other, more sophisticated techniques, but we'll stick with this for now.] Removing the 1583589 unknown data points gives us a total of 8813710 vaccinations.
