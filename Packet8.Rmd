@@ -35,7 +35,7 @@ options(scipen = 999)
 
 ## The $\chi^2$ statistic
 
-Shifting our perspective a little bit: We are examining whether or not the variable of "hospitalization event" is *independent* of the variable of "treated with ivermectin". In the null hypothesis, these variables are, in fact, independent: the probability of having an event is the same for those treated with ivermectin as those treated with a placebo. 
+Shifting our perspective a little bit from the previous packet: We have been examining whether or not the variable of "hospitalization event" is *independent* of the variable of "treated with ivermectin". In the null hypothesis, these variables are, in fact, independent: the probability of having an event is the same for those treated with ivermectin as those treated with a placebo. 
 
 We can create *two way tables* from our tables above, in which we find both the sums of the rows and the sums of the columns. The magic of a two way table is that we can have more than just a 2-by-2 table; we can make tables of any size. 
 
@@ -52,9 +52,7 @@ data <- gss18
 data <- data %>% 
   select(all_of(my_vars)) %>% 
   mutate(
-    # Convert all missing to NA
     across(everything(), haven::zap_missing),
-    # Make all categorical variables factors and relabel nicely
     across(all_of(cat_vars), forcats::as_factor)
   )
 
@@ -150,7 +148,7 @@ The number of degrees of freedom is
 
 The idea here is that if we know this many entries in the table, we can calculate the rest of them using the (known) values of the marginal sums. 
 
-## To Turn In
+## Goodness-of-fit
 
 Another use of the $\chi^2$ statistic is to perform what is called a *goodness-of-fit test*. Rather than determine if two variables are independent, this time we will investigate whether observed data fits a known distribution.
 
@@ -176,3 +174,14 @@ The demographics of Florida, according to the 2010 Census, are as follows:
 Using these demographics, we can calculate the expected number of vaccinations for each race, and compare them to the observed number of vaccinations. Using a randomization technique similar to the above, we can determine if the difference between expected and observed values is likely to be due to chance. 
 
 However, notice that some of vaccinations are "unknown". We often have missing information, and how we deal with missing data depends on how the data was collected. Since we are working with data that we have not collected ourselves, I'll simply exclude the "unknown" vaccinations from consideration.^[This is *listwise deletion*, which is a very simple method for dealing with missing data. There are other, more sophisticated techniques, but we'll stick with this for now.] Removing the 1583589 unknown data points gives us a total of 8813710 vaccinations.
+
+```{r goodness of fit}
+vac_data <- c(41462,753863,1191827,6826558)
+demo_data <- c(0.005,0.169,0.053,0.773)
+
+
+
+chisq.test(vac_data,p = demo_data, correct = F)
+
+
+```
