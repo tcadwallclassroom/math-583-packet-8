@@ -35,7 +35,7 @@ options(scipen = 999)
 
 ## The $\chi^2$ statistic
 
-Shifting our perspective a little bit from the previous packet: We have been examining whether or not the variable of "hospitalization event" is *independent* of the variable of "treated with ivermectin". In the null hypothesis, these variables are, in fact, independent: the probability of having an event is the same for those treated with ivermectin as those treated with a placebo. 
+Shifting our perspective a little bit from the previous packet: We have been examining whether or not the variable of "Was there a hospitalization event?" is *independent* of the variable of "Was the patient treated with ivermectin or a placebo?". In the null hypothesis, these variables are, in fact, independent: the probability of having an event is the same for those treated with ivermectin as those treated with a placebo. 
 
 We can create *two way tables* from our tables above, in which we find both the sums of the rows and the sums of the columns. The magic of a two way table is that we can have more than just a 2-by-2 table; we can make tables of any size. 
 
@@ -152,36 +152,118 @@ The idea here is that if we know this many entries in the table, we can calculat
 
 Another use of the $\chi^2$ statistic is to perform what is called a *goodness-of-fit test*. Rather than determine if two variables are independent, this time we will investigate whether observed data fits a known distribution.
 
-For this part, we will use data gathered in June 2021, as the COVID-19 vaccines were first beginning to be widely distributed. In Florida, the state leadership was accused of prioritizing vaccine distribution for wealthier, predominately White counties.
+For this test, let's examine the data of fatal police shootings compiled by the Washington Post. The data is available as a .csv file at [Washinton Post's Github repository.](https://github.com/washingtonpost/data-police-shootings) Click on the green "code" button, then "Download ZIP". Then, extract the zip file, and load the .csv file into R. 
 
-A CBS News article at <https://www.cbsnews.com/news/covid-vaccine-florida-wealthy-white-patients-poor-black/> examined the vaccination rate by county by percentage of White, non-Hispanic residents and by per capita income, and calculated a regression line.
-
-Let's examine the data a different way: the most recent vaccination data for Florida is available at <http://ww11.doh.state.fl.us/comm/_partners/covid19_report_archive/vaccine/vaccine_report_latest.pdf>. As of June 3, 2021, the site reported the following number of total vaccinations by race:
-
-|American Indian/Alaskan|Black|Other|Unknown|White|Total
-|---|---|---|---|---|---|
-|41462|753863|1191827|1583589|6826558|10397299|
-
-
-Note that Florida reports vaccination by ethnicity (Hispanic and Non-Hispanic) separately, and we aren't able to further break down the categories above by ethnicity.
-
-The demographics of Florida, according to the 2010 Census, are as follows: 
-
-|American Indian/Alaskan|Black|Other|White|Total
-|---|---|---|---|---|
-|0.5%|16.9%|5.3%|77.3%|100%|
-
-Using these demographics, we can calculate the expected number of vaccinations for each race, and compare them to the observed number of vaccinations. Using a randomization technique similar to the above, we can determine if the difference between expected and observed values is likely to be due to chance. 
-
-However, notice that some of vaccinations are "unknown". We often have missing information, and how we deal with missing data depends on how the data was collected. Since we are working with data that we have not collected ourselves, I'll simply exclude the "unknown" vaccinations from consideration.^[This is *listwise deletion*, which is a very simple method for dealing with missing data. There are other, more sophisticated techniques, but we'll stick with this for now.] Removing the 1583589 unknown data points gives us a total of 8813710 vaccinations.
-
-```{r goodness of fit}
-vac_data <- c(41462,753863,1191827,6826558)
-demo_data <- c(0.005,0.169,0.053,0.773)
-
-
-
-chisq.test(vac_data,p = demo_data, correct = F)
-
-
+```{r load csv}
+fatal_police_shootings_data <- 
+  read_csv("data-police-shootings-master/fatal-police-shootings-data.csv")
 ```
+
+Before we do anything sophisticated with this data, let's play around with it. As we do, I want you to ask you:
+
+* What do you *notice*?
+* What do you *wonder*?
+
+1. Start by creating several tables for categorical variables. Gender and race are big ones, but examine the data for other categorical variables as well. Try turning some of these tables into bar charts using `ggplot`.
+2. Use the `summary` command to find the mean and five-number summary for some numeric variables. Create some histograms for numeric variables. 
+
+Now, let's think about what we can infer from our data, specifically about race. For convenience, let's recode our data:
+
+```{r recode}
+fps_data <- fatal_police_shootings_data %>% 
+  mutate(
+    race_full = recode(race,
+                     "A" = "Asian",
+                     "B" = "Black",
+                     "H" = "Hispanic",
+                     "N" = "Native American",
+                     "O" = "Other",
+                     "W" = "White"
+    )
+  )
+```
+
+Here is some R code that stores some demographic information for us; this information is taken from the 2020 census:
+
+```{r demographics}
+demographics_2020 <- c("Asian" = 0.059,
+                       "Black" = 0.119,
+                       "Hispanic" = 0.195,
+                       "Native American" = 0.009,
+                       "Other" = 0.045,
+                       "White" = 0.573)
+```
+
+The population of  the US was approximately 331.5 million in 2020, we can find the number of Americans in each group (in "hundred thousands") with:
+
+```{r demo times number}
+demographics_2020 * 3315
+```
+
+and then, find the number of police shootings (per 100,000) for each group with
+
+```{r per capita}
+table(fps_data$race_full) / (demographics_2020 * 3315)
+```
+
+Now, the disparities here are pretty obvious, but let's put some inferential statistics on it. 
+
+3. If we want to think about the question, "Are certain race groups fatally shot by police at a higher rate than others?", what would your null and alternative hypotheses be?
+
+4. Based on the null hypothesis, what would be the "expected" number of fatal police shootings for each group? (Use the total number of fatal police shootings to calculate the expected values)
+
+5. Use these expected values and the observed data to calculate the $\chi^2$ statistic for this data. Do this by hand first, then verify your answer with the `infer` package. See the [infer package documentation](https://cran.microsoft.com/snapshot/2022-03-29/web/packages/infer/vignettes/chi_squared.html) on the chi-squared tests; the "goodness of fit" test is about halfway down.
+
+6. Use the `infer` package to generate 10000 simulations of data drawn from the null hypothesis.
+
+7. Finally, use `infer` to calculate the p-value, and use the `visualize()` function of `infer` to create a graph of the simulated null distribution with the observed data highlighted.
+
+8. Now, run a `chisq.test()` on the data, with `p = demographics_2020`. (See the help file for more information.)
+
+## To Turn In
+
+Turn in a report of the results of steps 3-7 above. You should use the same steps, adapted as necessary, as you did in your report from Packet 7. I've included those instructions below along with the necessary adaptations. Note that you will not need to calculate a confidence interval (which would be kind of meaningless for the $\chi^2$ statistic, anyways.)
+
+Section 1: Introduction
+(This section covers Step 1: Ask a research question.)
+
+Provide some background context for the investigation. What is the general topic we are investigating, and why is it interesting or important?
+What is the research question in this investigation?
+
+Section 2: Methods
+(This section covers Step 2: Design a study and collect data.)
+
+What is the population we are studying? What does the goodness of fit test compare our data to?
+
+Section 3: Data Exploration
+(This section covers Step 3: Explore the data.)
+
+In this section, you will provide summary tables and graphs to organize and visualize the data collected by the researchers. Include one bar chart showing the number of fatal police shootings for each race, and another showing the number of fatal police shootings *per capita* for each group.
+
+
+Section 4: Statistical Inference
+(This section covers Step 4: Draw inferences beyond the data.) 
+
+Tests of Significance: Identify the two competing explanations and identify which is the null vs. alternative hypothesis. 
+
+Perform the first S in the 3S strategy: What is the (test) statistic we want to calculate from each observed or simulated sample? What is its value in the observed sample?
+
+Perform the second S in the 3S strategy: Explain how to create a null distribution model for the study assuming the null hypothesis is correct. 
+
+Perform the third S step in the 3S strategy: explain how to obtain the p-value for this test, and identify its value as calculated by R.
+
+How strong is your evidence against the null hypothesis and in favor of the alternative hypothesis? Include a graph showing the null distribution of the test statistic, the position of the observed test statistic, and highlighting the portion of the null distribution that is at least as extreme as the observed test statistic. Write 1-2 sentences to interpret the graph.
+
+Finally, re-do your analysis with a built-in R function, and see if you get similar results.
+
+Section 5: Conclusion and Discussion
+(This section covers Step 5: Formulate conclusions and Step 6: Look back and ahead.)
+
+Write a conclusion that answers your research question.
+Justify your conclusion based on the results of your test of significance.
+What are the real-world consequences of your results?
+
+
+
+
+
