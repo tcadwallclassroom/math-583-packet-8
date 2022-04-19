@@ -1,0 +1,33 @@
+For this part, we will use data gathered in June 2021, as the COVID-19 vaccines were first beginning to be widely distributed. In Florida, the state leadership was accused of prioritizing vaccine distribution for wealthier, predominately White counties.
+
+A CBS News article at <https://www.cbsnews.com/news/covid-vaccine-florida-wealthy-white-patients-poor-black/> examined the vaccination rate by county by percentage of White, non-Hispanic residents and by per capita income, and calculated a regression line.
+
+Let's examine the data a different way: the most recent vaccination data for Florida is available at <http://ww11.doh.state.fl.us/comm/_partners/covid19_report_archive/vaccine/vaccine_report_latest.pdf>. As of June 3, 2021, the site reported the following number of total vaccinations by race:
+
+|American Indian/Alaskan|Black|Other|Unknown|White|Total
+|---|---|---|---|---|---|
+|41462|753863|1191827|1583589|6826558|10397299|
+
+
+Note that Florida reports vaccination by ethnicity (Hispanic and Non-Hispanic) separately, and we aren't able to further break down the categories above by ethnicity.
+
+The demographics of Florida, according to the 2010 Census, are as follows: 
+
+|American Indian/Alaskan|Black|Other|White|Total
+|---|---|---|---|---|
+|0.5%|16.9%|5.3%|77.3%|100%|
+
+Using these demographics, we can calculate the expected number of vaccinations for each race, and compare them to the observed number of vaccinations. Using a randomization technique similar to the above, we can determine if the difference between expected and observed values is likely to be due to chance. 
+
+However, notice that some of vaccinations are "unknown". We often have missing information, and how we deal with missing data depends on how the data was collected. Since we are working with data that we have not collected ourselves, I'll simply exclude the "unknown" vaccinations from consideration.^[This is *listwise deletion*, which is a very simple method for dealing with missing data. There are other, more sophisticated techniques, but we'll stick with this for now.] Removing the 1583589 unknown data points gives us a total of 8813710 vaccinations.
+
+```{r goodness of fit}
+vac_data <- c(41462,753863,1191827,6826558)
+demo_data <- c(0.005,0.169,0.053,0.773)
+
+
+
+chisq.test(vac_data,p = demo_data, correct = F)
+
+
+```

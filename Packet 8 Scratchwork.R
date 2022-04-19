@@ -101,3 +101,72 @@ vaccines <- c(rep("AIAN",41462),
               rep("White",6826558))
 vacdata <- data.frame(vaccines)
 
+### Police Shooting Data from Washington Post
+
+#|Race/Ethnicity| US Population (in millions)|
+#  |---|---|
+#  |White (non-Hispanic) | 197 |
+#  |Black (non-Hispanic)	|42|
+#  |Hispanic (of any race)	|39|
+#  |Other  (non-Hispanic)	|49|
+#  |Total	|327|
+  
+library(readr)
+fatal_police_shootings_data <- 
+  read_csv("data-police-shootings-master/fatal-police-shootings-data.csv")
+
+fps_data <- fatal_police_shootings_data %>% 
+  mutate(
+    race_full = recode(race,
+                     "A" = "Asian",
+                     "B" = "Black",
+                     "H" = "Hispanic",
+                     "N" = "Native American",
+                     "O" = "Other",
+                     "W" = "White"
+    )
+  )
+
+
+demographics_2020 <- c("Asian" = 0.059,
+                       "Black" = 0.119,
+                       "Hispanic" = 0.195,
+                       "Native American" = 0.009,
+                       "Other" = 0.045,
+                       "White" = 0.573)
+
+table_race <- table(fps_data$race_full)
+chisq.test(table_race, p = demographics_2020)
+chisq.test(table_race, p = demographics_2020)$residuals
+
+table(fps_data$race_full)
+fps_data %>% na.omit(race_full) %>% ggplot(aes(x = race_full)) +
+  geom_bar(color = "black",
+           fill = "forestgreen")
+
+fps_data %>% na.omit(gender) %>% ggplot(aes(x = gender)) +
+  geom_bar(color = "black",
+           fill = "forestgreen")
+
+observed_gof_statistic <- fps_data %>%
+  specify(response = race_full) %>%
+  hypothesize(null = "point",
+              p = demographics_2020) %>%
+  calculate(stat = "Chisq")
+
+
+null_dist_gof <- fps_data %>%
+  specify(response = race_full) %>%
+  hypothesize(null = "point",
+              p = demographics_2020) %>%
+  generate(reps = 10000, type = "draw") %>% 
+  calculate(stat = "Chisq")
+
+null_dist_gof %>%
+  visualize() + 
+  shade_p_value(observed_gof_statistic,
+                direction = "greater")
+
+p_value_gof <- null_dist_gof %>%
+  get_p_value(observed_gof_statistic,
+              direction = "greater")
