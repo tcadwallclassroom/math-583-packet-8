@@ -263,7 +263,9 @@ Write a conclusion that answers your research question.
 Justify your conclusion based on the results of your test of significance.
 What are the real-world consequences of your results?
 
+## Reading Assignment
 
+Read "Mathematics in Service to Democracy", by Kira Hamman (posted to Canvas). You should write a response to this article and turn it in with your report above. As you respond, ask yourself: Are there any characteristics of the current mathematics education system or curriculum that you believe should be changed in order to better promote quantitative reasoning (and democracy)? If so, what are they and why? What challenges are there in making those changes? What might be some unintended consequences of making those changes? 
 
 
 
