@@ -138,7 +138,9 @@ null_dist_chisq %>%
 Of course, R also has a built-in function `chisq.test()`:
 
 ```{r chisq baseR}
-chisq.test(data$race, data$gunlaw)
+chisqtest <- chisq.test(data$race, data$gunlaw)
+chisqtest
+
 ```
 
 The 2-by-2 tables we saw in the two-proportion tests above can also be tackled using the $\chi^2$ statistic instead. In this case, there is only 1 degree of freedom. 
@@ -152,7 +154,7 @@ The idea here is that if we know this many entries in the table, we can calculat
 
 Another use of the $\chi^2$ statistic is to perform what is called a *goodness-of-fit test*. Rather than determine if two variables are independent, this time we will investigate whether observed data fits a known distribution.
 
-For this test, let's examine the data of fatal police shootings compiled by the Washington Post. The data is available as a .csv file at [Washinton Post's Github repository.](https://github.com/washingtonpost/data-police-shootings) Click on the green "code" button, then "Download ZIP". Then, extract the zip file, and load the .csv file into R. 
+For this test, let's examine the data of fatal police shootings compiled by the Washington Post. The data is available as a .csv file at [Washington Post's Github repository.](https://github.com/washingtonpost/data-police-shootings) Click on the green "code" button, then "Download ZIP". Then, extract the zip file, and load the .csv file into R. 
 
 ```{r load csv}
 fatal_police_shootings_data <- 
