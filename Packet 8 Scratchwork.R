@@ -159,7 +159,7 @@ null_dist_gof <- fps_data %>%
   specify(response = race_full) %>%
   hypothesize(null = "point",
               p = demographics_2020) %>%
-  generate(reps = 10000, type = "draw") %>% 
+  generate(reps = 1000, type = "draw") %>% 
   calculate(stat = "Chisq")
 
 null_dist_gof %>%
